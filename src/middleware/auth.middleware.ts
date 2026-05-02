@@ -1,10 +1,10 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { UnauthorizedError, ForbiddenError } from '../common/index.js';
-import { verifyToken } from '../common/security/token.js';
+import { verifyToken } from '../common/security/token.security.js';
 import { envVars } from '../config/index.js';
 import { User } from '../db/index.js';
 
-type TokenKey = 'accessToken' | 'refreshToken' | 'revokeToken';
+type TokenKey = 'accessToken' | 'refreshToken';
 
 /**
  * Authentication Middleware (General)

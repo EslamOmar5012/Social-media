@@ -11,6 +11,18 @@ export const configService = () => {
         port: process.env.PORT || 3000,
         nodeEnv: process.env.NODE_ENV,
         dbUrl: process.env.DB_URL,
+        redis: {
+            username: process.env.REDIS_USERNAME || 'default',
+            password: process.env.REDIS_PASSWORD,
+            host: process.env.REDIS_HOST || '127.0.0.1',
+            port: parseInt(process.env.REDIS_PORT || '6379'),
+        },
+        
+        // Email Settings
+        email: {
+            user: process.env.EMAIL_USER || '',
+            pass: process.env.EMAIL_PASS || ''
+        },
         
         // Token Settings
         accessToken: {
@@ -20,10 +32,6 @@ export const configService = () => {
         refreshToken: {
             secret: process.env.REFRESH_TOKEN_SECRET || 'default_refresh_secret',
             expires: process.env.REFRESH_TOKEN_EXPIRES || '7d'
-        },
-        revokeToken: {
-            secret: process.env.REVOKE_TOKEN_SECRET || 'default_revoke_secret',
-            expires: process.env.REVOKE_TOKEN_EXPIRES || '24h'
         },
 
         bcryptSalt: parseInt(process.env.BCRYPT_SALT || '10'),

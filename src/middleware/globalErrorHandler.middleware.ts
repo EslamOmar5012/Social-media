@@ -14,7 +14,7 @@ export const globalErrorHandler = (
 
     // Use the predefined errorResponse utility
     return errorResponse(res, {
-        code: err.code || err.statusCode || 500,
+        code: err.statusCode || err.status || (typeof err.code === 'number' ? err.code : 500),
         message: err.message || 'Internal Server Error',
         data: err.data || null
     });

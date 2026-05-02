@@ -2,7 +2,8 @@ import express from 'express';
 import type { Application, Request, Response, NextFunction } from 'express';
 import { envVars } from './config/index.js';
 import authRouter from './modules/auth/auth.routes.js';
-import { connectDB } from './db/db.connection.js';
+import userRouter from './modules/user/user.routes.js';
+import { connectDB, connectRedis } from './db/index.js';
 import { NotFoundError } from './common/index.js';
 import { globalErrorHandler } from './middleware/index.js';
 
@@ -10,6 +11,7 @@ export const bootstrap = async () => {
 
     // Database Connection
     await connectDB();
+    await connectRedis();
 
     const app: Application = express();
 
@@ -21,6 +23,7 @@ export const bootstrap = async () => {
 
     // Routes
     app.use('/auth', authRouter);
+    app.use('/user', userRouter);
 
     // Basic route
 

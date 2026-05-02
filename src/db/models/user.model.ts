@@ -1,20 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-
-export enum Role {
-    USER = 'user',
-    ADMIN = 'admin'
-}
-
-export enum Provider {
-    SYSTEM = 'system',
-    GOOGLE = 'google',
-    FACEBOOK = 'facebook'
-}
-
-export enum Gender {
-    MALE = 'male',
-    FEMALE = 'female'
-}
+import { Role, Provider, Gender } from '../../common/index.js';
 
 export interface IUser extends Document {
     username: string;
@@ -28,6 +13,7 @@ export interface IUser extends Document {
     provider: Provider;
     gender: Gender;
     isEmailConfirmed: boolean;
+    expireAt?: Date;
     changeCredentialTime: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -85,6 +71,10 @@ const userSchema = new Schema<IUser>({
     isEmailConfirmed: {
         type: Boolean,
         default: false
+    },
+    expireAt: {
+        type: Date,
+        index: { expires: 0 }
     },
     changeCredentialTime: {
         type: Date

@@ -34,14 +34,7 @@ export const generateAuthTokens = (payload: TokenPayload) => {
     };
 };
 
-/**
- * Generate Revoke Token
- */
-export const generateRevokeToken = (payload: TokenPayload): string => {
-    return jwt.sign(payload, envVars.revokeToken.secret, { 
-        expiresIn: envVars.revokeToken.expires as any
-    });
-};
+
 
 /**
  * Verify Token

@@ -1,7 +1,8 @@
 import type { Response } from 'express';
 
 export const errorResponse = (res: Response, error: any) => {
-    const code = error.code || 500;
+    let code = parseInt(error.code) || 500;
+    if (code < 100 || code > 599) code = 500; // Ensure it's a valid HTTP status code
     const message = error.message || 'Internal Server Error';
     const data = error.data || null;
 
