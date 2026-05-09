@@ -35,6 +35,13 @@ export const configService = () => {
         },
 
         bcryptSalt: parseInt(process.env.BCRYPT_SALT || '10'),
-        encryptionKey: process.env.ENCRYPTION_KEY || 'default_secret'
+        encryptionKey: process.env.ENCRYPTION_KEY || 'default_secret',
+        
+        // Cloudinary Settings
+        cloudinary: {
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+            apiKey: process.env.CLOUDINARY_API_KEY || '',
+            apiSecret: process.env.CLOUDINARY_API_SECRET || ''
+        }
     };
 };

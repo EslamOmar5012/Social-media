@@ -13,3 +13,8 @@ export interface IProfileResponse {
         isEmailConfirmed: boolean;
     };
 }
+
+export interface IMessageResponse {
+    message: string;
+    data?: any;
+}

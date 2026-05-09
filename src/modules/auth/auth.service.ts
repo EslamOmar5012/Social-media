@@ -46,10 +46,16 @@ export class AuthService {
     async login(credentials: any): Promise<ILogin> {
         const { email, password } = credentials;
 
-        // 1. Find user
-        const user = await userRepo.findByEmail(email);
+        // 1. Find user (include deleted to check status)
+        const user = await userRepo.findOne({ email }, { withDeleted: true });
+        
         if (!user) {
             throw new UnauthorizedError('Invalid email or password');
+        }
+
+        // Check if account is soft-deleted
+        if (user.deletedAt) {
+            throw new UnauthorizedError('Your account has been soft-deleted. Please contact support to restore it.');
         }
 
         // 2. Compare password

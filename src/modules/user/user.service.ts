@@ -1,6 +1,9 @@
+import fs from 'fs';
+import path from 'path';
 import { userRepo } from '../../db/index.js';
 import { decrypt, NotFoundError } from '../../common/index.js';
-import type { IProfileResponse } from './user.dto.js';
+import type { IMessageResponse, IProfileResponse } from './user.dto.js';
+import cloudinary from '../../common/cloudinary/cloudinary.utils.js';
 
 export class UserService {
     constructor() {}
@@ -24,6 +27,205 @@ export class UserService {
                 isEmailConfirmed: user.isEmailConfirmed
             }
         };
+    }
+
+    async softDeleteUser(userId: string): Promise<IMessageResponse> {
+        const user = await userRepo.findById(userId);
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        await user.softDelete();
+
+        return {
+            message: 'User soft-deleted successfully'
+        };
+    }
+
+    async hardDeleteUser(userId: string): Promise<IMessageResponse> {
+        const user = await userRepo.findOneAndDelete({ _id: userId });
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        return {
+            message: 'User hard-deleted successfully from database'
+        };
+    }
+
+    async restoreUser(userId: string): Promise<IMessageResponse> {
+        const user = await userRepo.findOne({ _id: userId }, { withDeleted: true });
+        
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        if (user.deletedAt === null) {
+            return { message: 'User is already active' };
+        }
+
+        await user.restore();
+
+        return {
+            message: 'User restored successfully'
+        };
+    }
+
+    async updateProfilePic(userId: string, file: Express.Multer.File): Promise<IMessageResponse> {
+        const user = await userRepo.findById(userId);
+        if (!user) {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            throw new NotFoundError('User not found');
+        }
+
+        const SIZE_THRESHOLD = 1 * 1024 * 1024; // 1MB
+
+        try {
+            if (file.size < SIZE_THRESHOLD) {
+                const result = await cloudinary.uploader.upload(file.path, {
+                    folder: `social-media/users/${userId}/profile`
+                });
+                user.profilePic = result.secure_url;
+                fs.unlinkSync(file.path);
+            } else {
+                user.profilePic = `${file.destination}/${file.filename}`;
+            }
+
+            await user.save();
+            return { 
+                message: file.size < SIZE_THRESHOLD ? 'Profile picture uploaded to Cloudinary' : 'Profile picture saved locally (large file)',
+                data: {
+                    url: user.profilePic,
+                    storage: file.size < SIZE_THRESHOLD ? 'Cloudinary' : 'Local',
+                    size: file.size,
+                    mimetype: file.mimetype,
+                    folder: file.size < SIZE_THRESHOLD ? `social-media/users/${userId}/profile` : 'uploads'
+                }
+            };
+        } catch (error) {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            throw error;
+        }
+    }
+
+    async updateCoverPics(userId: string, files: Express.Multer.File[]): Promise<IMessageResponse> {
+        const user = await userRepo.findById(userId);
+        if (!user) {
+            files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+            throw new NotFoundError('User not found');
+        }
+
+        const SIZE_THRESHOLD = 1 * 1024 * 1024; // 1MB
+        const newUrls: string[] = [];
+        const uploadDetails: any[] = [];
+
+        try {
+            for (const file of files) {
+                const isSmall = file.size < SIZE_THRESHOLD;
+                let url = '';
+                let folder = '';
+
+                if (isSmall) {
+                    folder = `social-media/users/${userId}/covers`;
+                    const result = await cloudinary.uploader.upload(file.path, {
+                        folder
+                    });
+                    url = result.secure_url;
+                    fs.unlinkSync(file.path);
+                } else {
+                    folder = 'uploads';
+                    url = `${file.destination}/${file.filename}`;
+                }
+
+                newUrls.push(url);
+                uploadDetails.push({
+                    url,
+                    storage: isSmall ? 'Cloudinary' : 'Local',
+                    size: file.size,
+                    mimetype: file.mimetype,
+                    folder
+                });
+            }
+
+            user.coverPics.push(...newUrls);
+            await user.save();
+
+            return { 
+                message: 'Cover pictures updated successfully',
+                data: uploadDetails
+            };
+        } catch (error) {
+            files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+            throw error;
+        }
+    }
+
+    async getDownloadInfo(userId: string, type: 'profile' | 'cover', index: number = 0): Promise<{ path: string, isLocal: boolean }> {
+        const user = await userRepo.findById(userId);
+        if (!user) throw new NotFoundError('User not found');
+
+        let imageUrl = '';
+        if (type === 'profile') {
+            imageUrl = user.profilePic || '';
+        } else {
+            imageUrl = user.coverPics[index] || '';
+        }
+
+        if (!imageUrl) throw new NotFoundError(`${type} picture not found`);
+
+        const isLocal = imageUrl.startsWith('uploads/');
+        
+        return {
+            path: isLocal ? path.resolve(imageUrl) : imageUrl,
+            isLocal
+        };
+    }
+
+    async deleteImage(userId: string, type: 'profile' | 'cover', index: number = 0): Promise<IMessageResponse> {
+        const user = await userRepo.findById(userId);
+        if (!user) throw new NotFoundError('User not found');
+
+        let imageUrl = '';
+        if (type === 'profile') {
+            imageUrl = user.profilePic || '';
+        } else {
+            imageUrl = user.coverPics[index] || '';
+        }
+
+        if (!imageUrl) throw new NotFoundError(`${type} picture not found`);
+
+        const isLocal = imageUrl.startsWith('uploads/');
+
+        if (isLocal) {
+            // 1. Delete Local File
+            if (fs.existsSync(imageUrl)) {
+                fs.unlinkSync(imageUrl);
+            }
+        } else {
+            // 2. Delete from Cloudinary
+            // Extract public_id from URL: .../upload/v1234567/folder/id.jpg -> folder/id
+            const parts = imageUrl.split('/');
+            const uploadIndex = parts.indexOf('upload');
+            if (uploadIndex !== -1) {
+                // public_id is everything after /vXXXX/ excluding the extension
+                const publicIdWithExt = parts.slice(uploadIndex + 2).join('/');
+                const publicId = publicIdWithExt.split('.')[0];
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId);
+                }
+            }
+        }
+
+        // 3. Update Database
+        if (type === 'profile') {
+            user.profilePic = undefined;
+        } else {
+            user.coverPics.splice(index, 1);
+        }
+
+        await user.save();
+
+        return { message: `${type} picture deleted successfully` };
     }
 }
 

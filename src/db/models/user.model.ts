@@ -15,8 +15,11 @@ export interface IUser extends Document {
     isEmailConfirmed: boolean;
     expireAt?: Date;
     changeCredentialTime: Date;
+    deletedAt?: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    softDelete(): Promise<IUser>;
+    restore(): Promise<IUser>;
 }
 
 const userSchema = new Schema<IUser>({
@@ -78,6 +81,10 @@ const userSchema = new Schema<IUser>({
     },
     changeCredentialTime: {
         type: Date
+    },
+    deletedAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true,
@@ -85,5 +92,25 @@ const userSchema = new Schema<IUser>({
     strict: true,
     strictQuery: true,
 });
+
+// Query Middleware to exclude deleted users (Paranoid style)
+userSchema.pre<mongoose.Query<IUser, IUser>>(['find', 'findOne', 'findOneAndUpdate', 'findOneAndDelete'], function (this: mongoose.Query<IUser, IUser>) {
+    if (this.getOptions().withDeleted) {
+        return;
+    }
+    this.where({ deletedAt: null });
+});
+
+// Instance method for soft delete
+userSchema.methods.softDelete = function (this: IUser) {
+    this.deletedAt = new Date();
+    return this.save();
+};
+
+// Instance method to restore a soft-deleted user
+userSchema.methods.restore = function (this: IUser) {
+    this.deletedAt = null;
+    return this.save();
+};
 
 export const User = mongoose.model<IUser>('User', userSchema);
