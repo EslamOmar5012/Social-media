@@ -1,5 +1,6 @@
 import { redisClient } from './redis.connection.js';
 import { EmailType } from '../../common/index.js';
+import { Types } from 'mongoose';
 
 class RedisService {
     // --- Key Generators ---
@@ -17,6 +18,10 @@ class RedisService {
 
     public getOtpBlockedKey(email: string, emailType: EmailType | string): string {
         return `otp:blocked:${emailType}:${email}`;
+    }
+
+    public getFCMKey(userId: Types.ObjectId | string): string {
+        return `FCM::${userId}`;
     }
 
     // --- Core Redis Operations ---
@@ -79,6 +84,19 @@ class RedisService {
 
     public async ttl(key: string): Promise<number> {
         return await redisClient.ttl(key);
+    }
+
+    // --- Set Operations (FCM Tokens) ---
+    public async addToSet(userId: Types.ObjectId | string, fcmToken: string) {
+        return await redisClient.sAdd(this.getFCMKey(userId), fcmToken);
+    }
+
+    public async getSetMembers(userId: Types.ObjectId | string) {
+        return await redisClient.sMembers(this.getFCMKey(userId));
+    }
+
+    public async removeFromSet(userId: Types.ObjectId | string, fcmToken: string) {
+        return await redisClient.sRem(this.getFCMKey(userId), fcmToken);
     }
 }
 

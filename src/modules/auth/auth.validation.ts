@@ -24,7 +24,8 @@ export const signupSchema = {
 export const loginSchema = {
     body: z.object({
         email: z.string().email('Invalid email address'),
-        password: z.string().min(1, 'Password is required')
+        password: z.string().min(1, 'Password is required'),
+        fcmToken: z.string().optional()
     })
 };
 

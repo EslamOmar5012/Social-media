@@ -43,13 +43,39 @@ export class UserService {
     }
 
     async hardDeleteUser(userId: string): Promise<IMessageResponse> {
-        const user = await userRepo.findOneAndDelete({ _id: userId });
+        const user = await userRepo.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
         }
 
+        // 1. Delete Local Assets
+        const localAssets = [user.profilePic, ...user.coverPics].filter(url => url && url.startsWith('uploads/'));
+        for (const localPath of localAssets) {
+            if (fs.existsSync(localPath!)) {
+                fs.unlinkSync(localPath!);
+            }
+        }
+
+        // 2. Delete Cloudinary Assets
+        const folderPath = `social-media/users/${userId}`;
+        try {
+            // Delete all resources in the user's folder
+            await cloudinary.api.delete_resources_by_prefix(folderPath);
+            // Delete the empty subfolders and the main folder
+            // Cloudinary doesn't have a "recursive delete folder" in one go for folders themselves, 
+            // but we can try to delete the specific ones we know
+            await cloudinary.api.delete_folder(`${folderPath}/profile`).catch(() => {});
+            await cloudinary.api.delete_folder(`${folderPath}/covers`).catch(() => {});
+            await cloudinary.api.delete_folder(folderPath).catch(() => {});
+        } catch (error) {
+            console.error(`Cloudinary cleanup failed for user ${userId}:`, error);
+        }
+
+        // 3. Delete user from DB
+        await userRepo.findOneAndDelete({ _id: userId });
+
         return {
-            message: 'User hard-deleted successfully from database'
+            message: 'User and all related assets hard-deleted successfully'
         };
     }
 

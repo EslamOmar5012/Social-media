@@ -3,9 +3,18 @@ import type { Application, Request, Response, NextFunction } from 'express';
 import { envVars } from './config/index.js';
 import authRouter from './modules/auth/auth.routes.js';
 import userRouter from './modules/user/user.routes.js';
+import notificationRouter from './modules/notification/notification.routes.js';
+import postRouter from './modules/post/post.routes.js';
+import commentRouter from './modules/comment/comment.routes.js';
+import storyRouter from './modules/story/story.routes.js';
 import { connectDB, connectRedis } from './db/index.js';
 import { NotFoundError } from './common/index.js';
-import { globalErrorHandler } from './middleware/index.js';
+import { globalErrorHandler, authentication } from './middleware/index.js';
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@as-integrations/express5';
+import { typeDefs } from './graphql/typeDefs.js';
+import { resolvers } from './graphql/resolvers.js';
+import cors from 'cors';
 
 export const bootstrap = async () => {
 
@@ -14,17 +23,30 @@ export const bootstrap = async () => {
     await connectRedis();
 
     const app: Application = express();
+    
+    // GraphQL Setup
+    const server = new ApolloServer({
+        typeDefs,
+        resolvers,
+    });
+
+    await server.start();
 
 
     const port = envVars.port;
 
     // Middleware
     app.use(express.json());
+    app.use('/graphql', authentication(), cors<any>(), express.json(), expressMiddleware(server));
     app.use('/uploads', express.static('uploads'));
 
     // Routes
     app.use('/auth', authRouter);
     app.use('/user', userRouter);
+    app.use('/post', postRouter);
+    app.use('/comment', commentRouter);
+    app.use('/story', storyRouter);
+    app.use('/notification', notificationRouter);
 
     // Basic route
 

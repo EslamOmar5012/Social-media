@@ -3,3 +3,4 @@ dist/
 *.log
 .env
 src/config/.env.*
+src/social-media-app-41d4a-firebase-adminsdk-fbsvc-3b74f461ca.json

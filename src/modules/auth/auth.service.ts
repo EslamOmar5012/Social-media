@@ -44,7 +44,7 @@ export class AuthService {
     }
 
     async login(credentials: any): Promise<ILogin> {
-        const { email, password } = credentials;
+        const { email, password, fcmToken } = credentials;
 
         // 1. Find user (include deleted to check status)
         const user = await userRepo.findOne({ email }, { withDeleted: true });
@@ -64,7 +64,12 @@ export class AuthService {
             throw new UnauthorizedError('Invalid email or password');
         }
 
-        // 3. Generate tokens
+        // 3. Store FCM Token in Redis if provided
+        if (fcmToken) {
+            await redisService.addToSet(user._id as string, fcmToken);
+        }
+
+        // 4. Generate tokens
         const tokens = generateAuthTokens({
             userId: user._id as string,
             role: user.role
