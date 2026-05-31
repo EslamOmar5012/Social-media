@@ -42,7 +42,8 @@ export const generateAuthTokens = (payload: TokenPayload) => {
 export const verifyToken = (token: string, secret: string): any => {
     try {
         return jwt.verify(token, secret);
-    } catch (error) {
+    } catch (error: any) {
+        console.error('JWT Verification Error:', error.message);
         return null;
     }
 };

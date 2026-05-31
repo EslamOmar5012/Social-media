@@ -16,6 +16,7 @@ export interface IUser extends Document {
     expireAt?: Date;
     changeCredentialTime: Date;
     deletedAt?: Date | null;
+    friends?: mongoose.Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
     softDelete(): Promise<IUser>;
@@ -85,6 +86,11 @@ const userSchema = new Schema<IUser>({
     deletedAt: {
         type: Date,
         default: null
+    },
+    friends: {
+        type: [Schema.Types.ObjectId],
+        ref: 'User',
+        default: []
     }
 }, {
     timestamps: true,
