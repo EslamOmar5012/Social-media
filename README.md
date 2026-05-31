@@ -1,3 +1,5 @@
-# post man collection --> https://.postman.co/workspace/My-Workspace~3ab3314d-e9bb-42d6-891b-ce769cf03b69/collection/36639501-c5f51ced-1ab9-4046-9822-0422d56eedc0?action=share&creator=36639501&active-environment=36639501-f9ba6dd6-2886-49b2-81dd-9015638cd603
+# post man collection: 
+https://.postman.co/workspace/My-Workspace~3ab3314d-e9bb-42d6-891b-ce769cf03b69/collection/36639501-c5f51ced-1ab9-4046-9822-0422d56eedc0?action=share&creator=36639501&active-environment=36639501-f9ba6dd6-2886-49b2-81dd-9015638cd603
 
-# graph ql collection --> https://.postman.co/workspace/My-Workspace~3ab3314d-e9bb-42d6-891b-ce769cf03b69/collection/6a1c34117347b5b6e5076051?action=share&creator=36639501&active-environment=36639501-f9ba6dd6-2886-49b2-81dd-9015638cd603
+# graph ql collection: 
+https://.postman.co/workspace/My-Workspace~3ab3314d-e9bb-42d6-891b-ce769cf03b69/collection/6a1c34117347b5b6e5076051?action=share&creator=36639501&active-environment=36639501-f9ba6dd6-2886-49b2-81dd-9015638cd603
