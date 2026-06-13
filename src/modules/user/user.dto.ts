@@ -11,6 +11,8 @@ export interface IProfileResponse {
         gender?: string | undefined;
         role: string;
         isEmailConfirmed: boolean;
+        profilePic?: string | undefined;
+        coverPics: string[];
     };
 }
 

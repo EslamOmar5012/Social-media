@@ -24,7 +24,9 @@ export class UserService {
                 age: user.age,
                 gender: user.gender,
                 role: user.role,
-                isEmailConfirmed: user.isEmailConfirmed
+                isEmailConfirmed: user.isEmailConfirmed,
+                profilePic: user.profilePic,
+                coverPics: user.coverPics
             }
         };
     }
