@@ -1,12 +1,15 @@
 import express from 'express';
+import { createServer } from 'http';
 import type { Application, Request, Response, NextFunction } from 'express';
 import { envVars } from './config/index.js';
+import { socketService } from './common/services/socket.service.js';
 import authRouter from './modules/auth/auth.routes.js';
 import userRouter from './modules/user/user.routes.js';
 import notificationRouter from './modules/notification/notification.routes.js';
 import postRouter from './modules/post/post.routes.js';
 import commentRouter from './modules/comment/comment.routes.js';
 import storyRouter from './modules/story/story.routes.js';
+import chatRouter from './modules/chat/chat.routes.js';
 import { connectDB, connectRedis } from './db/index.js';
 import { NotFoundError } from './common/index.js';
 import { globalErrorHandler, authentication } from './middleware/index.js';
@@ -49,6 +52,7 @@ export const bootstrap = async () => {
     app.use('/comment', commentRouter);
     app.use('/story', storyRouter);
     app.use('/notification', notificationRouter);
+    app.use('/chat', chatRouter);
 
     // Basic route
 
@@ -67,12 +71,13 @@ export const bootstrap = async () => {
 
 
     // Start server
+    const httpServer = createServer(app);
+    socketService.init(httpServer);
 
-    app.listen(port, (err?: any) => {
-        if (err) 
-            return console.error('[server]: Failed to start server:', err);
-
+    httpServer.listen(port, () => {
         console.log(`[server]: Server is running at http://localhost:${port}`);
+    }).on('error', (err: any) => {
+        console.error('[server]: Failed to start server:', err);
     });
 };
 

@@ -1,0 +1,282 @@
+{
+  "info": {
+    "name": "Social Media – Chat APIs",
+    "_postman_id": "chat-apis-social-media",
+    "description": "All group chat and messaging endpoints for the Social Media API.\n\n**Setup:**\n1. Run the Login request first.\n2. The token is saved automatically to the `token` collection variable.\n3. After creating a group, copy the `roomID` from the response and paste it into the `roomID` collection variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token – auto-filled by the Login request script"
+    },
+    {
+      "key": "roomID",
+      "value": "",
+      "type": "string",
+      "description": "Paste the roomID returned from Create Group Chat here"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.accessToken) {",
+                  "    pm.collectionVariables.set('token', res.data.accessToken);",
+                  "    console.log('✅ Token saved automatically');",
+                  "} else {",
+                  "    console.warn('⚠️ Could not find accessToken in response. Check the response structure.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your@email.com\",\n  \"password\": \"yourpassword\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login and get a JWT token. The token is auto-saved to the `token` collection variable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Chat",
+      "item": [
+        {
+          "name": "Create Group Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.roomID) {",
+                  "    pm.collectionVariables.set('roomID', res.data.roomID);",
+                  "    console.log('✅ roomID saved: ' + res.data.roomID);",
+                  "} else {",
+                  "    console.warn('⚠️ Could not find roomID in response. Set it manually in the collection variables.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "groupName",
+                  "value": "Team Chat",
+                  "type": "text",
+                  "description": "Min 3 chars, max 100 chars"
+                },
+                {
+                  "key": "participants",
+                  "value": "[\"PASTE_USER_ID_1_HERE\", \"PASTE_USER_ID_2_HERE\"]",
+                  "type": "text",
+                  "description": "JSON array of MongoDB user _id strings"
+                },
+                {
+                  "key": "groupImage",
+                  "type": "file",
+                  "src": [],
+                  "disabled": true,
+                  "description": "Optional group avatar image"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/create-group",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "create-group"]
+            },
+            "description": "Creates a new group chat.\n\n**Body (form-data):**\n- `groupName` (required) – 3 to 100 characters\n- `participants` (required) – JSON array of MongoDB user ID strings\n- `groupImage` (optional) – image file for group avatar\n\n**Socket event fired:** `group_created` → sent to all participants in real-time."
+          }
+        },
+        {
+          "name": "Get My Groups",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chat/my-groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "my-groups"]
+            },
+            "description": "Returns all group chats that the authenticated user is a participant of."
+          }
+        },
+        {
+          "name": "Get Chat History (Messages)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/chat/room/{{roomID}}/messages?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room", "{{roomID}}", "messages"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Messages per page (default: 50, max: 100)"
+                }
+              ]
+            },
+            "description": "Returns paginated message history for a chat room (oldest first).\n\nUser must be a participant of the room. Uses the `roomID` collection variable — make sure to create a group first or set it manually."
+          }
+        },
+        {
+          "name": "Send Message (JSON)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello everyone! 👋\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/room/{{roomID}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room", "{{roomID}}", "messages"]
+            },
+            "description": "Sends a text message to a chat room.\n\n**Socket events fired:**\n- `new_message` → broadcast to everyone in the room\n- `message_notification` → push notification to participants not in the room"
+          }
+        },
+        {
+          "name": "Send Message (with Attachment)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "content",
+                  "value": "Check out this file!",
+                  "type": "text",
+                  "description": "Message text (required, 1–5000 chars)"
+                },
+                {
+                  "key": "attachment",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional file attachment (image, pdf, etc.)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/room/{{roomID}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room", "{{roomID}}", "messages"]
+            },
+            "description": "Sends a message with a file attachment to a chat room. The file is uploaded to Cloudinary and the URL is stored with the message."
+          }
+        }
+      ]
+    }
+  ]
+}

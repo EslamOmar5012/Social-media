@@ -39,3 +39,28 @@ export const multerHost = (allowedTypes: string[] = fileValidation.image) => {
     });
     return upload;
 };
+
+/**
+ * Multer Memory Middleware
+ * Configures Multer to store uploaded files in memory as Buffers.
+ * Ideal for streaming uploads directly to S3.
+ */
+export const multerMemory = (allowedTypes: string[] = fileValidation.image) => {
+    const storage = multer.memoryStorage();
+
+    const fileFilter = (req: any, file: any, cb: any) => {
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file format'), false);
+        }
+    };
+
+    const upload = multer({
+        storage,
+        fileFilter,
+        limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    });
+    return upload;
+};
+
