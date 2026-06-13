@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import { Types } from 'mongoose';
 import { chatRepo, userRepo, messageRepo } from '../../db/index.js';
-import { NotFoundError, ForbiddenError, ChatType } from '../../common/index.js';
+import { NotFoundError, ForbiddenError, BadRequestError, ChatType } from '../../common/index.js';
 import { uploadBufferToCloudinary } from '../../common/cloudinary/cloudinary.utils.js';
 import { socketService } from '../../common/services/socket.service.js';
-import type { ICreateGroupChatRequest, ISendMessageRequest } from './chat.dto.js';
+import type { ICreateGroupChatRequest, ISendMessageRequest, ICreateGroupChatByEmailsRequest, ICreateDirectChatRequest } from './chat.dto.js';
 import type { IChat } from '../../db/models/chat.model.js';
 import type { IMessage, HIMessage } from '../../db/models/message.model.js';
 
@@ -208,6 +208,99 @@ export class ChatService {
         }
 
         return message;
+    }
+
+    /**
+     * Creates a group chat using participants' emails instead of their user IDs.
+     * Resolves the emails to user IDs, then invokes createGroupChat.
+     */
+    async createGroupChatByEmails(
+        creatorId: string,
+        chatData: ICreateGroupChatByEmailsRequest,
+        file?: Express.Multer.File
+    ): Promise<IChat> {
+        const { groupName, emails } = chatData;
+
+        // Deduplicate input emails to prevent double-counting
+        const uniqueEmails = Array.from(new Set(emails.map(e => e.trim().toLowerCase())));
+
+        // Fetch corresponding active users from the database
+        const matchingUsers = await userRepo.findAll({
+            email: { $in: uniqueEmails },
+            deletedAt: null
+        });
+
+        // Verify that all emails mapped to active users
+        const foundEmails = matchingUsers.map(u => u.email.toLowerCase());
+        const missingEmails = uniqueEmails.filter(email => !foundEmails.includes(email));
+
+        if (missingEmails.length > 0) {
+            throw new NotFoundError(`Users with the following emails were not found or are deleted: ${missingEmails.join(', ')}`);
+        }
+
+        const participantIdStrings = matchingUsers.map(u => u._id.toString());
+
+        // Delegate to the main group chat creation service
+        return await this.createGroupChat(creatorId, { groupName, participants: participantIdStrings }, file);
+    }
+
+    /**
+     * Finds or creates a direct (one-to-one) chat between two users.
+     */
+    async getOrCreateDirectChat(
+        userId: string,
+        chatData: ICreateDirectChatRequest
+    ): Promise<IChat> {
+        const { recipientId } = chatData;
+
+        if (userId === recipientId) {
+            throw new BadRequestError('You cannot start a direct chat with yourself');
+        }
+
+        // 1. Verify recipient user exists and is active
+        const recipient = await userRepo.findById(recipientId);
+        if (!recipient) {
+            throw new NotFoundError('Recipient user not found');
+        }
+
+        const userObjectId = new Types.ObjectId(userId);
+        const recipientObjectId = new Types.ObjectId(recipientId);
+
+        // 2. Check if a direct chat between these two users already exists
+        const existingChat = await chatRepo.findOne({
+            chatType: ChatType.DIRECT,
+            participants: { $all: [userObjectId, recipientObjectId] },
+            deletedAt: null
+        });
+
+        if (existingChat) {
+            return existingChat;
+        }
+
+        // 3. Create a new direct chat room
+        const roomID = crypto.randomUUID();
+        const chat = await chatRepo.create({
+            createdBy: userObjectId,
+            participants: [userObjectId, recipientObjectId],
+            chatType: ChatType.DIRECT,
+            groupImage: recipient.profilePic || 'https://res.cloudinary.com/dqaq6ju4d/image/upload/v1700000000/default-group-avatar.png',
+            roomID
+        });
+
+        // 4. Emit Socket.io event to the recipient (non-blocking)
+        try {
+            socketService.emitToUser(recipientId, 'direct_chat_created', {
+                chatId: chat._id,
+                roomID: chat.roomID,
+                createdBy: chat.createdBy,
+                participants: chat.participants,
+                createdAt: chat.createdAt
+            });
+        } catch (socketError) {
+            console.error('[ChatService] Failed to emit direct_chat_created socket event:', socketError);
+        }
+
+        return chat;
     }
 }
 

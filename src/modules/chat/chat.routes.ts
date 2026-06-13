@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { chatController } from './chat.controller.js';
 import { authentication } from '../../middleware/auth.middleware.js';
 import { validation } from '../../middleware/index.js';
-import { createGroupChatSchema, sendMessageSchema, getChatHistorySchema } from './chat.validation.js';
+import { createGroupChatSchema, createGroupChatByEmailsSchema, createDirectChatSchema, sendMessageSchema, getChatHistorySchema } from './chat.validation.js';
 import { multerMemory } from '../../middleware/multer.middleware.js';
 
 const chatRouter = Router();
@@ -20,6 +20,29 @@ chatRouter.post(
     multerMemory().single('groupImage'),
     validation(createGroupChatSchema),
     chatController.createGroupChat.bind(chatController)
+);
+
+/**
+ * @route  POST /chat/create-group-by-emails
+ * @desc   Create a new group chat with name, participants emails, and optional avatar image
+ * @access Private
+ */
+chatRouter.post(
+    '/create-group-by-emails',
+    multerMemory().single('groupImage'),
+    validation(createGroupChatByEmailsSchema),
+    chatController.createGroupChatByEmails.bind(chatController)
+);
+
+/**
+ * @route  POST /chat/direct
+ * @desc   Find or create a direct chat between the current user and the recipient
+ * @access Private
+ */
+chatRouter.post(
+    '/direct',
+    validation(createDirectChatSchema),
+    chatController.createDirectChat.bind(chatController)
 );
 
 /**

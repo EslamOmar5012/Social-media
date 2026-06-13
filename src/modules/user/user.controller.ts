@@ -110,6 +110,28 @@ export class UserController {
             next(error);
         }
     }
+
+    async addFriend(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = (req as any).user._id.toString();
+            const { friendId } = req.body;
+            const result = await userService.addFriend(userId, friendId);
+            return successResponse(res, result, result.message, 200);
+        } catch (error: any) {
+            next(error);
+        }
+    }
+
+    async searchUsers(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = (req as any).user._id.toString();
+            const query = req.query.q as string || '';
+            const result = await userService.searchUsers(userId, query);
+            return successResponse(res, result, result.message, 200);
+        } catch (error: any) {
+            next(error);
+        }
+    }
 }
 
 export const userController = new UserController();

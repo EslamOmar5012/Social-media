@@ -19,6 +19,35 @@ export class ChatController {
     }
 
     /**
+     * POST /chat/create-group-by-emails
+     * Creates a new group chat using emails with optional avatar upload.
+     */
+    async createGroupChatByEmails(req: Request, res: Response, next: NextFunction) {
+        try {
+            const creatorId = (req as any).user._id.toString();
+            const file = req.file;
+            const result = await chatService.createGroupChatByEmails(creatorId, req.body, file);
+            return successResponse(res, result, 'Group chat created successfully', 201);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * POST /chat/direct
+     * Finds or creates a direct chat between the current user and the recipient.
+     */
+    async createDirectChat(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = (req as any).user._id.toString();
+            const result = await chatService.getOrCreateDirectChat(userId, req.body);
+            return successResponse(res, result, 'Direct chat initialized successfully', 200);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
      * GET /chat/my-groups
      * Returns all group chats the authenticated user belongs to.
      */

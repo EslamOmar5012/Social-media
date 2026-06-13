@@ -25,6 +25,37 @@ export const createGroupChatSchema = {
     })
 };
 
+const emailsSchema = z.preprocess((val) => {
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+        } catch {
+            return val.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        return [val].filter(Boolean);
+    }
+    if (Array.isArray(val)) {
+        return val.filter(Boolean);
+    }
+    return [];
+}, z.array(
+    z.string().email('Invalid participant email')
+).min(1, 'At least one participant email is required'));
+
+export const createGroupChatByEmailsSchema = {
+    body: z.object({
+        groupName: z.string().min(3, 'Group name must be at least 3 characters').max(100, 'Group name cannot exceed 100 characters'),
+        emails: emailsSchema
+    })
+};
+
+export const createDirectChatSchema = {
+    body: z.object({
+        recipientId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid recipient User ID')
+    })
+};
+
 export const sendMessageSchema = {
     params: z.object({
         roomID: z.string().min(1, 'Room ID is required')

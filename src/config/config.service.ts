@@ -36,6 +36,7 @@ export const configService = () => {
 
         bcryptSalt: parseInt(process.env.BCRYPT_SALT || '10'),
         encryptionKey: process.env.ENCRYPTION_KEY || 'default_secret',
+        corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
         
         // Cloudinary Settings
         cloudinary: {

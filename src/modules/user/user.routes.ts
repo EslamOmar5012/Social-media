@@ -3,6 +3,8 @@ import { userController } from './user.controller.js';
 import { authentication, authorization } from '../../middleware/auth.middleware.js';
 import { Role } from '../../common/index.js';
 import { multerHost } from '../../middleware/multer.middleware.js';
+import { validation } from '../../middleware/validation.middleware.js';
+import { addFriendSchema, searchUsersSchema } from './user.validation.js';
 
 const router = Router();
 
@@ -46,6 +48,18 @@ router.patch('/restore/:userId',
     authentication(), 
     authorization([Role.ADMIN]), 
     userController.restoreUser.bind(userController)
+);
+
+router.post('/add-friend', 
+    authentication(), 
+    validation(addFriendSchema), 
+    userController.addFriend.bind(userController)
+);
+
+router.get('/search', 
+    authentication(), 
+    validation(searchUsersSchema), 
+    userController.searchUsers.bind(userController)
 );
 
 export default router;

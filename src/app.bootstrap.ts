@@ -37,10 +37,16 @@ export const bootstrap = async () => {
 
 
     const port = envVars.port;
+    const corsOrigin = envVars.corsOrigin;
+    const cleanOrigin = corsOrigin.endsWith('/') ? corsOrigin.slice(0, -1) : corsOrigin;
 
     // Middleware
+    app.use(cors({
+        origin: cleanOrigin,
+        credentials: true
+    }));
     app.use(express.json());
-    app.use('/graphql', authentication(), cors<any>(), express.json(), expressMiddleware(server, {
+    app.use('/graphql', authentication(), express.json(), expressMiddleware(server, {
         context: async ({ req }) => ({ user: (req as any).user })
     }));
     app.use('/uploads', express.static('uploads'));

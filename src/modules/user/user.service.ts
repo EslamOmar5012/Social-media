@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { userRepo } from '../../db/index.js';
-import { decrypt, NotFoundError } from '../../common/index.js';
+import { decrypt, NotFoundError, BadRequestError } from '../../common/index.js';
 import type { IMessageResponse, IProfileResponse } from './user.dto.js';
 import cloudinary from '../../common/cloudinary/cloudinary.utils.js';
 
@@ -252,6 +252,61 @@ export class UserService {
         await user.save();
 
         return { message: `${type} picture deleted successfully` };
+    }
+
+    async addFriend(userId: string, friendId: string): Promise<IMessageResponse> {
+        if (userId === friendId) {
+            throw new BadRequestError('You cannot add yourself as a friend');
+        }
+
+        const friend = await userRepo.findById(friendId);
+        if (!friend) {
+            throw new NotFoundError('Friend user not found');
+        }
+
+        const user = await userRepo.findById(userId);
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        const isAlreadyFriend = user.friends?.some((id: any) => id.toString() === friendId);
+        if (isAlreadyFriend) {
+            throw new BadRequestError('You are already friends with this user');
+        }
+
+        await userRepo.findOneAndUpdate({ _id: userId }, { $addToSet: { friends: friend._id } });
+        await userRepo.findOneAndUpdate({ _id: friendId }, { $addToSet: { friends: user._id } });
+
+        return {
+            message: 'Friend added successfully'
+        };
+    }
+
+    async searchUsers(userId: string, query: string): Promise<IMessageResponse> {
+        const matchingUsers = await userRepo.findAll({
+            _id: { $ne: userId },
+            deletedAt: null,
+            $or: [
+                { username: { $regex: query, $options: 'i' } },
+                { email: { $regex: query, $options: 'i' } }
+            ]
+        });
+
+        const currentUser = await userRepo.findById(userId);
+        const currentUserFriendsSet = new Set(currentUser?.friends?.map((id: any) => id.toString()) || []);
+
+        const results = matchingUsers.map(u => ({
+            id: u._id.toString(),
+            username: u.username,
+            email: u.email,
+            profilePic: u.profilePic,
+            isFriend: currentUserFriendsSet.has(u._id.toString())
+        }));
+
+        return {
+            message: 'Users searched successfully',
+            data: results
+        };
     }
 }
 
